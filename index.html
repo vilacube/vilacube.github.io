@@ -142,6 +142,7 @@
       font-weight: bold;
       margin-top: 20px;
       transition: 0.3s;
+      cursor: pointer;
     }
     .store-btn:hover {
       transform: scale(1.15);
@@ -187,17 +188,94 @@
       border-radius: 15px;
       font-weight: bold;
     }
+
+    /* ---------- CHECKOUT ---------- */
+    #checkout-area {
+      margin-top: 20px;
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.85);
+    }
+
   </style>
 
+  <!-- PayPal JavaScript SDK: replace <YOUR_CLIENT_ID> below -->
+  <script src="https://www.paypal.com/sdk/js?client-id=AZXXxRNt5Boe0bnr6SJROLnycLJqMWQwkMH8vQxLnS-CJuyAdR9PrNyqhNV1VtGv3e-_bypwxRoN2qQ9&currency=EUR"></script>
+
   <script>
+    // ---------------------- MOSTRAR/OCULTAR SECCIÓNS ----------------------
     function mostrar(seccion) {
       document.getElementById("info").classList.add("hidden");
       document.getElementById("galeria").classList.add("hidden");
+      document.getElementById("checkout").classList.add("hidden");
 
       document.getElementById(seccion).classList.remove("hidden");
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+
+    // ---------------------- VALORES DO PRODUCTO (MODIFICABLES) ----------------------
+    // Pór aquí o prezo do VIP (string con dous decimais)
+    const VIP_PRICE = "2.85"; // exemplo: 3€
+    const VIP_CURRENCY = "EUR";
+
+    // ---------------------- RENDER PAYPAL BUTTON ----------------------
+    // Cando le clic no botón "Mercar VIP" mostramos a área de checkout e creamos o botón
+    function showCheckout() {
+      mostrar('checkout');
+
+      // Evitar renderizar varias veces
+      if (window.paypalButtonRendered) return;
+      window.paypalButtonRendered = true;
+
+      // Renderizamos o botón de PayPal usando o SDK oficial
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color:  'gold',
+          shape:  'rect',
+          label:  'pay'
+        },
+
+        // createOrder lánzase cando o cliente fai clic -> configura a orde
+        createOrder: function(data, actions) {
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: VIP_PRICE,
+                currency_code: VIP_CURRENCY
+              },
+              description: 'VilaCube - VIP'
+            }]
+          });
+        },
+
+        // onApprove lánzase cando o pago foi autorizado; aquí capturámolo
+        onApprove: function(data, actions) {
+          return actions.order.capture().then(function(details) {
+            // Aquí podes facer o que queiras: rexistrar pago, dar VIP no servidor, etc.
+            alert('Pago realizado por ' + details.payer.name.given_name + '! Transacción ID: ' + details.id);
+
+            // EXEMPLO: enviar datos ao teu servidor para marcar o usuario como VIP
+            // fetch('/capture-webhook', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(details) });
+
+            // Opcional: redirixir a unha páxina de obrigado
+            // window.location.href = '/gracias.html';
+          });
+        },
+
+        onError: function(err) {
+          console.error('PayPal Checkout error', err);
+          alert('Houbo un erro no proceso de pago. Reintenta máis tarde.');
+        }
+
+      }).render('#paypal-button-container');
+    }
+
+    // Se prefires crear a orde no servidor (máis seguro), coméntao aquí e implementa un endpoint.
   </script>
 
 </head>
@@ -224,7 +302,20 @@
         semi-anárquico onde o importante é pasalo ben, colaborar e vivir aventuras.
       </p>
 
-      <a class="store-btn" href="#">Mercar VIP</a>
+      <!-- Este botón abre a zona de checkout onde se renderiza o botón PayPal -->
+      <button class="store-btn" onclick="showCheckout()">Mercar VIP — €" + VIP_PRICE + "</button>
+
+      <div id="checkout" class="section hidden">
+        <h2>Mercar VIP</h2>
+        <p>Prezo: <strong id="price-display">" + VIP_PRICE + " €</strong></p>
+
+        <div id="checkout-area">
+          <!-- Contedor onde PayPal SDK renderizará o botón -->
+          <div id="paypal-button-container"></div>
+
+          <p class="note">Pódese pagar con tarxeta de crédito sen crear conta PayPal (Guest Checkout) se está habilitado na túa conta PayPal. Os fondos irán ao teu conto PayPal.</p>
+        </div>
+      </div>
     </div>
 
     <!-- --------- SECCIÓN OCULTA: INFORMACIÓN --------- -->
@@ -245,3 +336,4 @@
   </div>
 </body>
 </html>
+
